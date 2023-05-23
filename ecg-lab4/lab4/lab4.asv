@@ -1,0 +1,184 @@
+function varargout = lab4(varargin)
+% LAB4 MATLAB code for lab4.fig
+%      LAB4, by itself, creates a new LAB4 or raises the existing
+%      singleton*.
+%
+%      H = LAB4 returns the handle to a new LAB4 or the handle to
+%      the existing singleton*.
+%
+%      LAB4('CALLBACK',hObject,eventData,handles,...) calls the local
+%      function named CALLBACK in LAB4.M with the given input arguments.
+%
+%      LAB4('Property','Value',...) creates a new LAB4 or raises the
+%      existing singleton*.  Starting from the left, property value pairs are
+%      applied to the GUI before lab4_OpeningFcn gets called.  An
+%      unrecognized property name or invalid value makes property application
+%      stop.  All inputs are passed to lab4_OpeningFcn via varargin.
+%
+%      *See GUI Options on GUIDE's Tools menu.  Choose "GUI allows only one
+%      instance to run (singleton)".
+%
+% See also: GUIDE, GUIDATA, GUIHANDLES
+
+% Edit the above text to modify the response to help lab4
+
+% Last Modified by GUIDE v2.5 24-Apr-2023 13:19:02
+
+% Begin initialization code - DO NOT EDIT
+gui_Singleton = 1;
+gui_State = struct('gui_Name',       mfilename, ...
+                   'gui_Singleton',  gui_Singleton, ...
+                   'gui_OpeningFcn', @lab4_OpeningFcn, ...
+                   'gui_OutputFcn',  @lab4_OutputFcn, ...
+                   'gui_LayoutFcn',  [] , ...
+                   'gui_Callback',   []);
+if nargin && ischar(varargin{1})
+    gui_State.gui_Callback = str2func(varargin{1});
+end
+
+if nargout
+    [varargout{1:nargout}] = gui_mainfcn(gui_State, varargin{:});
+else
+    gui_mainfcn(gui_State, varargin{:});
+end
+% End initialization code - DO NOT EDIT
+
+
+% --- Executes just before lab4 is made visible.
+function lab4_OpeningFcn(hObject, eventdata, handles, varargin)
+% This function has no output args, see OutputFcn.
+% hObject    handle to figure
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+% varargin   command line arguments to lab4 (see VARARGIN)
+
+% Choose default command line output for lab4
+handles.output = hObject;
+
+% Update handles structure
+guidata(hObject, handles);
+Ports = seriallist;
+set(handles.PuertoCom,'String',Ports);
+
+
+
+% --- Outputs from this function are returned to the command line.
+function varargout = lab4_OutputFcn(hObject, eventdata, handles) 
+% varargout  cell array for returning output args (see VARARGOUT);
+% hObject    handle to figure
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Get default command line output from handles structure
+varargout{1} = handles.output;
+
+
+% --- Executes on button press in connect.
+function connect_Callback(hObject, eventdata, handles)
+global obj1
+global Activado;
+ValuePort = get(handles.PuertoCom,'Value');
+Ports = get(handles.PuertoCom,'String');
+com = Ports{ValuePort};
+obj1 = instrfind('Type','serial', ...
+    'Port',com,...
+    'Tag','');
+estado = get(handles.connect,'String');
+if contains(estado,'Conectar')
+    if isempty(obj1)
+        obj1 =serial(com,...
+            'BaudRate',115200,...
+            'InputBufferSize',4,...
+            'BytesAvailableFcn',{@readser},...
+            'BytesAvailableFcnMode','byte',...
+            'BytesAvailableFcnCount',4, ...
+            'Timeout',0.1);
+    else
+        fclose(obj1);
+        obj1 = obj1(1);
+    end
+    fopen(obj1);
+    set(handles.connect,'String','Desconectar');
+else
+    Activado = false;
+    pause(2);
+    fclose(obj1);
+    delete(obj1);
+    set(handles.connect,'String','Conectar');
+end
+
+function readser(obj,~)
+   global x
+   a = fread(obj,2,'uint8')
+   adc = a(1)*100+a(2)
+    x=[x,adc]
+% --- Executes on selection change in PuertoCom.
+function PuertoCom_Callback(hObject, eventdata, handles)
+% hObject    handle to PuertoCom (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: contents = cellstr(get(hObject,'String')) returns PuertoCom contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from PuertoCom
+
+
+% --- Executes during object creation, after setting all properties.
+function PuertoCom_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to PuertoCom (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: popupmenu controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on button press in graph.
+function graph_Callback(hObject, eventdata, handles)
+global x;
+global Activado;
+Activado = true;
+
+while Activado
+    amp = x;
+    if length (amp) > 200
+        tiempo = linspace (0,2,length(amp));
+        plot(tiempo, amp)
+        axis([0,2,0, 4095]);
+        grid;
+        drawnow;
+      
+        x=[];
+        tiempo = [];
+        
+saveas(gcf,'electro.jpg');
+ 
+    end
+
+
+end
+    
+
+
+
+% --- Executes on button press in Envio.
+function Envio_Callback(hObject, eventdata, handles)
+% Definir el correo electrónico del destinatario y del remitente
+setpref('Internet', 'SMTP_Server', 'smtp.outlook.com');
+setpref('Internet', 'E_mail','dave.tiago25@hotmail.com'); %Destinatario
+setpref('Internet','SMTP_Username','dave.tiago25@hotmail.com');
+setpref('Internet','SMTP_Password', 'Marmota.123456')
+
+props = java.lang.System.getProperties;
+props.setProperty('mail.smtp.auth','true');
+props.setProperty('mail.smtp.starttls.enable','true');
+
+imagen = imread ('electro1.jpg');
+imshow(imagen);
+
+
+
+sendmail('est.nicolas.bernal1@unimilitar.edu.co','Electrocardiograma PROFE','SIUUUU','electro1.jpg');
+
